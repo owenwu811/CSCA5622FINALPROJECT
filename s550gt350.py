@@ -1,6 +1,8 @@
 import time
 from bs4 import BeautifulSoup
 import requests
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 ans = dict()
 
@@ -225,3 +227,4 @@ for a in ans:
 
 print(len(ans), "totalgt350")
 
+#eda
