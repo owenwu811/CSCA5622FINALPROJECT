@@ -328,47 +328,118 @@ plt.close()
 
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split, GridSearchCV, cross_val_score
+from sklearn.linear_model import LinearRegression, Ridge
+from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.preprocessing import StandardScaler
+from statsmodels.stats.outliers_influence import variance_inflation_factor
 
-# 2. Prepare the Data
-# (Assuming df is already cleaned: no NaNs, correct types)
-X = df[['Mileage', 'Year']]  # Features
-y = df['Price']              # Target
+# 1. Prepare the Data
+# Assuming df is already cleaned: no NaNs, correct types
 
-# 3. Train/Test Split
+# Define mileage bins
+bins = [0, 30000, 60000, 90000, 120000, 150000, np.inf]  # You can adjust these bin ranges based on your data
+labels = ['0-30k', '30k-60k', '60k-90k', '90k-120k', '120k-150k', '150k+']  # Labeling the bins
+
+# Create a new column for binned mileage
+df['Mileage_Binned'] = pd.cut(df['Mileage'], bins=bins, labels=labels, right=False)
+
+# Convert Mileage_Binned to a categorical feature
+df['Mileage_Binned'] = df['Mileage_Binned'].astype('category')
+
+# 2. Prepare the Data (Including Binned Mileage as a Categorical Feature)
+X = df[['Mileage_Binned', 'Year']]  # Adding the binned mileage feature
+y = df['Price']  # Target
+
+# One-Hot Encoding of the 'Mileage_Binned' feature
+X = pd.get_dummies(X, columns=['Mileage_Binned'], drop_first=True)  # One-Hot Encoding
+
+# 3. Check for Multicollinearity using correlation and VIF
+correlation_matrix = df[['Mileage', 'Year', 'Price']].corr()
+print("Correlation Matrix:\n", correlation_matrix)
+
+X_for_vif = df[['Mileage', 'Year']]  # Include features of interest
+vif_data = pd.DataFrame()
+vif_data['Feature'] = X_for_vif.columns
+vif_data['VIF'] = [variance_inflation_factor(X_for_vif.values, i) for i in range(len(X_for_vif.columns))]
+print("\nVariance Inflation Factor (VIF):\n", vif_data)
+
+# 4. Train/Test Split
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# 4. Initialize and Train the Model
+# 5. Scaling (Optional but Recommended for some models like Ridge)
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+# 6. Multiple Models: Linear Regression, Ridge, and Random Forest
+
+# Model 1: Linear Regression
 lr = LinearRegression()
-lr.fit(X_train, y_train)
+lr.fit(X_train_scaled, y_train)
+y_pred_lr = lr.predict(X_test_scaled)
+mse_lr = mean_squared_error(y_test, y_pred_lr)
+r2_lr = r2_score(y_test, y_pred_lr)
+print(f"\nLinear Regression - MSE: {mse_lr:.2f}, R²: {r2_lr:.2f}")
 
-# 5. Predict
-y_pred = lr.predict(X_test)
+# Model 2: Ridge Regression (Regularization)
+ridge = Ridge(alpha=1.0)  # alpha controls regularization strength
+ridge.fit(X_train_scaled, y_train)
+y_pred_ridge = ridge.predict(X_test_scaled)
+mse_ridge = mean_squared_error(y_test, y_pred_ridge)
+r2_ridge = r2_score(y_test, y_pred_ridge)
+print(f"Ridge Regression - MSE: {mse_ridge:.2f}, R²: {r2_ridge:.2f}")
 
-# 6. Evaluate
-mse = mean_squared_error(y_test, y_pred)
-r2 = r2_score(y_test, y_pred)
+# Model 3: Random Forest Regressor (Hyperparameter Tuning with GridSearchCV)
+rf = RandomForestRegressor(random_state=42)
 
-print(f"Mean Squared Error (MSE): {mse:.2f}")
-print(f"R-squared (R²): {r2:.2f}")
+# Define hyperparameter grid
+param_grid = {
+    'n_estimators': [100, 200],
+    'max_depth': [10, 20, None],
+    'min_samples_split': [2, 5, 10]
+}
 
-# 7. Coefficients
-coefficients = pd.DataFrame({
-    'Feature': X.columns,
-    'Coefficient': lr.coef_
-})
+# Perform Grid Search
+grid_search = GridSearchCV(estimator=rf, param_grid=param_grid, cv=5)
+grid_search.fit(X_train, y_train)
+best_rf = grid_search.best_estimator_
 
-print("\nLinear Regression Coefficients:")
-print(coefficients)
+# Predict with the best Random Forest model
+y_pred_rf = best_rf.predict(X_test)
+mse_rf = mean_squared_error(y_test, y_pred_rf)
+r2_rf = r2_score(y_test, y_pred_rf)
+print(f"Random Forest - MSE: {mse_rf:.2f}, R²: {r2_rf:.2f}")
+print("Best Random Forest Hyperparameters:", grid_search.best_params_)
 
-# Interpretation
-#"""
-#Interpretation:
+# 7. Cross-Validation for Model Evaluation
+cv_scores_lr = cross_val_score(lr, X, y, cv=5, scoring='neg_mean_squared_error')
+cv_scores_ridge = cross_val_score(ridge, X, y, cv=5, scoring='neg_mean_squared_error')
+cv_scores_rf = cross_val_score(best_rf, X, y, cv=5, scoring='neg_mean_squared_error')
 
-#- The R² value of 0.52 means that about 52% of the variation in used car prices can be explained by Mileage and Year.
-#- The relatively high MSE suggests there is still substantial prediction error, likely because price is influenced by other factors not captured in this model (e.g., condition, color, accident history).
-#- Mileage has a stronger impact on price than Year, as shown by the larger absolute value of its coefficient (-0.179 vs 673 per year).
-#- Future improvements could include adding more features or trying non-linear models.
-#"""
+print(f"\nCross-Validation Scores (MSE):")
+print(f"Linear Regression: {-cv_scores_lr.mean():.2f}")
+print(f"Ridge Regression: {-cv_scores_ridge.mean():.2f}")
+print(f"Random Forest: {-cv_scores_rf.mean():.2f}")
+
+# 8. Evaluation of the Best Model (Random Forest)
+print("\nRandom Forest Best Model Evaluation on Test Set:")
+print(f"MSE: {mse_rf:.2f}, R²: {r2_rf:.2f}")
+
+# 9. Interpretation of Coefficients for Linear Models
+if 'Year' in X.columns:
+    coef_lr = pd.DataFrame({'Feature': X.columns, 'Coefficient': lr.coef_})
+    print("\nLinear Regression Coefficients:")
+    print(coef_lr)
+    
+    print("\nInterpretation of Coefficients:")
+    for index, row in coef_lr.iterrows():
+        feature = row['Feature']
+        coefficient = row['Coefficient']
+        if "Mileage_Binned" in feature:
+            print(f"The coefficient for {feature} is {coefficient:.2f}.")
+            print(f"Interpretation: A car in the {feature} mileage range will change the predicted price by {coefficient:.2f} units, holding other features constant.")
+        elif feature == 'Year':
+            print(f"The coefficient for {feature} is {coefficient:.2f}.")
+            print(f"Interpretation: A one-year increase in the car's age will change the predicted price by {coefficient:.2f} units, holding other features constant.")
