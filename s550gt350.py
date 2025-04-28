@@ -209,5 +209,4 @@ for i, n in enumerate(name):
 
 
 
-#print(ans)
 print(len(ans), "totalgt350 AND R")
