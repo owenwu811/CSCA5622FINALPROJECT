@@ -170,3 +170,31 @@ for i, n in enumerate(name):
     
 
 print(len(ans), "totalm3")
+
+#DATA CLEANING:
+
+for a in ans:
+    title, details, price = a
+    
+    # Clean title
+    if title.startswith("Used "):
+        title = title[len("Used "):]
+    title = title.replace("BMW ", "")  # Remove BMW
+    
+    # Clean details
+    # Remove MPG part
+    if "MPG:" in details:
+        before_mpg, after_mpg = details.split("MPG:", 1)
+        if "Color:" in after_mpg:
+            # Keep only after "Color:"
+            after_mpg = "Color:" + after_mpg.split("Color:",1)[1]
+        details = before_mpg.strip() + " " + after_mpg.strip()
+
+    # Remove Engine part
+    if "Engine:" in details:
+        details = details.split("Engine:")[0].strip()
+
+    # Optional: clean up extra spaces
+    details = " ".join(details.split())
+
+    print(title, "|", details, "|", price)

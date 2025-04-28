@@ -1,7 +1,7 @@
 import time
 from bs4 import BeautifulSoup
 import requests
-#2016 gt350
+
 ans = dict()
 
 website = 'https://www.carfax.com/Used-2016-Ford-Mustang-Shelby-GT350_x19662'
@@ -32,7 +32,7 @@ for result in results:
 
 
 for i, n in enumerate(name):
-    print(n, carspecs[i], carprice[i])
+    #print(n, carspecs[i], carprice[i])
     now = [n, carspecs[i], carprice[i]]
     ans[tuple(now)] = "a"
 
@@ -67,7 +67,7 @@ for result in results:
         carprice.append('n/a')
 
 for i, n in enumerate(name):
-    print(n, carspecs[i], carprice[i])
+    #print(n, carspecs[i], carprice[i])
     now = [n, carspecs[i], carprice[i]]
     ans[tuple(now)] = "a"
 
@@ -102,7 +102,7 @@ for result in results:
         carprice.append('n/a')
 
 for i, n in enumerate(name):
-    print(n, carspecs[i], carprice[i])
+    #print(n, carspecs[i], carprice[i])
     now = [n, carspecs[i], carprice[i]]
     ans[tuple(now)] = "a"
 
@@ -136,7 +136,7 @@ for result in results:
         carprice.append('n/a')
 
 for i, n in enumerate(name):
-    print(n, carspecs[i], carprice[i])
+    #print(n, carspecs[i], carprice[i])
     now = [n, carspecs[i], carprice[i]]
     ans[tuple(now)] = "a"
 
@@ -170,7 +170,7 @@ for result in results:
         carprice.append('n/a')
 
 for i, n in enumerate(name):
-    print(n, carspecs[i], carprice[i])
+    #print(n, carspecs[i], carprice[i])
     now = [n, carspecs[i], carprice[i]]
     ans[tuple(now)] = "a"
     
@@ -203,10 +203,25 @@ for result in results:
         carprice.append('n/a')
 
 for i, n in enumerate(name):
-    print(n, carspecs[i], carprice[i])
     now = [n, carspecs[i], carprice[i]]
     ans[tuple(now)] = "a"
 
+#CLEAN DATA: 
+for a in ans:
+    # Skip entries where price contains "Call for Price"
+    if "Call for Price" in a[-1]:
+        continue
 
+    # Remove "Used " at start if present
+    yearandbodystyle = a[0].replace("Used ", "").strip()
+    
+    # Remove "Ford Mustang" and "Coupe"
+    yearandbodystyle = yearandbodystyle.replace("Ford Mustang", "").replace("Coupe", "").strip()
+    
+    mileage_text = a[1][:15]  # First 15 characters (assumes mileage is at the start)
+    price_text = a[-1]        # Last field is price
 
-print(len(ans), "totalgt350 AND R")
+    print(yearandbodystyle, mileage_text, price_text)
+
+print(len(ans), "totalgt350")
+
