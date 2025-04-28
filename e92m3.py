@@ -276,6 +276,7 @@ plt.ylabel('Count')
 
 plt.tight_layout()
 plt.show()
+
 df = df.dropna(subset=['Year', 'Mileage', 'Price'])
 
 df['Year'] = df['Year'].astype(int)
@@ -294,7 +295,6 @@ plt.grid(True)
 plt.show()
 plt.close()
 
-
 # Plot 2: Correlation Heatmap
 
 corr_matrix = df[['Mileage', 'Price', 'Year']].corr()
@@ -310,15 +310,65 @@ plt.show()
 plt.close()
 
 
-#"We performed EDA to understand the relationships between mileage, year, and price in used E9X M3s. We expect that mileage negatively correlates with price. Summary statistics and visualizations are used to verify assumptions and detect outliers."
+# Conclusion
 
-#eda conclusion:
+# Summary of EDA:
+#
+# - There is a strong **negative correlation (-0.69)** between Mileage and Price. As mileage increases, price tends to decrease.
+# - The **Year** is positively correlated with Price (0.24), meaning newer cars (2013 models) tend to sell for slightly higher prices, but the effect is weaker compared to mileage.
+# - The scatter plot shows a downward trend, confirming that higher mileage cars are cheaper.
+# - Most cars cluster around 60,000–100,000 miles and are priced between $20,000–$35,000.
+# - Data limitations: the sample size is relatively small (around 95 cars), and the dataset may not fully represent the entire market (for example, there could be regional price variations or unreported accidents).
+# - Future work could involve gathering a larger dataset or including additional features like transmission type, color, accident history, or seller type.
+#
+# Overall, **mileage** is the dominant factor affecting used E9X M3 prices.
 
-#The correlation matrix reveals important relationships between mileage, price, and model year for E9X M3s.
-#There is a strong negative correlation between mileage and price (-0.69), indicating that vehicles with higher mileage tend to sell for lower prices.
-#This is expected, as higher mileage typically implies more wear and tear, thus reducing the car's value.
 
-#Additionally, there is a weak positive correlation between year and price (0.24), suggesting that newer model years are slightly more expensive on average, though the effect is not strong given the relatively narrow year range (2008–2013).
+#MODELS
 
-#Finally, a weak negative correlation between year and mileage (-0.23) indicates that newer vehicles tend to have lower mileage, although again, the relationship is not particularly strong.
-#Overall, mileage appears to be the dominant factor influencing price within this dataset.
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error, r2_score
+
+# 2. Prepare the Data
+# (Assuming df is already cleaned: no NaNs, correct types)
+X = df[['Mileage', 'Year']]  # Features
+y = df['Price']              # Target
+
+# 3. Train/Test Split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# 4. Initialize and Train the Model
+lr = LinearRegression()
+lr.fit(X_train, y_train)
+
+# 5. Predict
+y_pred = lr.predict(X_test)
+
+# 6. Evaluate
+mse = mean_squared_error(y_test, y_pred)
+r2 = r2_score(y_test, y_pred)
+
+print(f"Mean Squared Error (MSE): {mse:.2f}")
+print(f"R-squared (R²): {r2:.2f}")
+
+# 7. Coefficients
+coefficients = pd.DataFrame({
+    'Feature': X.columns,
+    'Coefficient': lr.coef_
+})
+
+print("\nLinear Regression Coefficients:")
+print(coefficients)
+
+# Interpretation
+#"""
+#Interpretation:
+
+#- The R² value of 0.52 means that about 52% of the variation in used car prices can be explained by Mileage and Year.
+#- The relatively high MSE suggests there is still substantial prediction error, likely because price is influenced by other factors not captured in this model (e.g., condition, color, accident history).
+#- Mileage has a stronger impact on price than Year, as shown by the larger absolute value of its coefficient (-0.179 vs 673 per year).
+#- Future improvements could include adding more features or trying non-linear models.
+#"""
